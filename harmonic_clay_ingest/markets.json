@@ -1,0 +1,11 @@
+{
+  "_note": "Market code -> Clay table the market's webhook feeds (workspace 864752). Webhook URLs are deliberately NOT stored here (public repo); the routine passes them with --webhook. query_sync = table is enabled for Clay's synced query API (workspace limit is 5).",
+  "markets": {
+    "RO": {"table_id": "t_0tfr8vzYFZWtszrzme8", "table_name": "TUF goes to Romania", "query_sync": true},
+    "GR": {"table_id": "t_0tizfk86A3EztD7VDg9", "table_name": "TUF goes to Greece", "query_sync": true},
+    "BG": {"table_id": "t_0tize593qmBigTYsZ2S", "table_name": "TUF is in Bulgaria", "query_sync": true},
+    "HR": {"table_id": "t_0thuq8ibXD2AwJ4otfn", "table_name": "TUF goes to Croatia", "query_sync": true},
+    "HU": {"table_id": "t_0ti4420CN4AmvJgbhm3", "table_name": "TUF goes to Hungary", "query_sync": true},
+    "WB": {"table_id": "t_0tigpxuortD47UyACyi", "table_name": "TUF goes to Small Western Balkans (Albania, Montenegro, Kosovo, Macedonia)", "query_sync": false}
+  }
+}
