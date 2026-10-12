@@ -6,7 +6,9 @@
       "table_name": "TUF goes to Romania",
       "query_sync": true,
       "home_countries": [
-        "romania"
+        "romania",
+        "moldova",
+        "republic of moldova"
       ],
       "diaspora_table_id": "t_0tkq8bg7CXGUGkQYMxN",
       "diaspora_table_name": "Romanian Diaspora"
@@ -64,6 +66,16 @@
       ],
       "diaspora_table_id": "t_0tkq8z4YuPnARZuMB7N",
       "diaspora_table_name": "Small Western Balkans Diaspora"
+    },
+    "RS": {
+      "table_id": "t_0thuzm5VdCGZPf59t2J",
+      "table_name": "TUF goes to Serbia",
+      "query_sync": false,
+      "home_countries": [
+        "serbia"
+      ],
+      "diaspora_table_id": "t_0tkq8s0H7Qbx26RosQa",
+      "diaspora_table_name": "Serbian Diaspora"
     }
   }
 }
