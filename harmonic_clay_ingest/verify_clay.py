@@ -14,8 +14,11 @@ Two backends:
 Lead verdicts (posted mode):
   ok | pending (Clay still evaluating) | missing (row not in Clay -> re-post) |
   broken_mapping (row exists but Full Name or LinkedIn empty -> payload contract broken: STOP) |
-  eval_error (Clay's founder check or founder AI errored -> re-run that cell in the Clay app)
-Overall status: ok | pending | eval_errors | needs_repost | broken (worst wins)
+  eval_error (Clay's founder check or founder AI errored -> re-run that cell in the Clay app) |
+  diaspora_missing (founder based outside the market's home countries is not in the market's
+                    Diaspora table; Clay's route column should have sent it -> re-run that cell in Clay)
+Overall status: ok | pending | eval_errors | diaspora_gaps | needs_repost | broken (worst wins)
+The diaspora check needs --via cli (Diaspora tables are not query-synced; the workspace allows 5 tables).
 `--write-missing FILE` writes missing LinkedIn URLs, one per line, for `ingest.py post --only-linkedin`.
 
 Exit codes: 0 report produced | 2 usage/config | 5 auth or network problem talking to Clay
@@ -88,6 +91,26 @@ class CliBackend:
                 for r in self.ql(table_id, q):
                     rows.setdefault(r.get("li"), {"li": r.get("li")})[key] = r.get("st")
         return rows
+
+    def present_in(self, table_id, urls):
+        found = set()
+        for i in range(0, len(urls), 4):
+            where = " OR ".join("%s = '%s'" % (_col("LinkedIn Profile"), u.replace("'", "''")) for u in urls[i:i + 4])
+            found |= {r.get("li") for r in self.ql(table_id, "SELECT %s AS li WHERE %s" % (_col("LinkedIn Profile"), where))}
+        return found
+
+    def founders_abroad(self, table_id, since, home):
+        rows, offset = [], 0
+        while True:
+            page = self.ql(table_id, "SELECT %s AS li, %s AS country WHERE %s >= '%s' AND %s = 'yes' AND NOT_EMPTY(%s) "
+                                     "ORDER BY %s DESC LIMIT 100 OFFSET %d"
+                           % (_col("LinkedIn Profile"), _col("Country"), _col("Created At"), since, _col("Is Founder"),
+                              _col("Country"), _col("Created At"), offset))
+            rows += page
+            if len(page) < 100:
+                break
+            offset += 100
+        return [r for r in rows if r.get("li") and str(r.get("country") or "").strip().lower() not in home]
 
     def health(self, table_id, since):
         w = " WHERE %s >= '%s'" % (_col("Created At"), since)
@@ -212,7 +235,7 @@ def health_status(c):
     return "ok"
 
 
-RANK = ["ok", "pending", "eval_errors", "needs_repost", "broken"]
+RANK = ["ok", "pending", "eval_errors", "diaspora_gaps", "needs_repost", "broken"]
 
 
 def worst(statuses):
@@ -269,11 +292,24 @@ def main(argv=None):
                     continue
                 rows = backend.lookup(cfg["table_id"], sorted(urls))
                 items = [{"linkedin_url": u, "verdict": verdict(rows.get(u)), "row": rows.get(u)} for u in sorted(urls)]
+                home = {c.lower() for c in cfg.get("home_countries", [])}
+                abroad = [it for it in items if it["verdict"] == "ok" and cfg.get("diaspora_table_id")
+                          and str(it["row"].get("is_founder") or "").lower() == "yes"
+                          and str(it["row"].get("country") or "").strip()
+                          and str(it["row"]["country"]).strip().lower() not in home]
+                if abroad and args.via == "cli":
+                    there = backend.present_in(cfg["diaspora_table_id"], [it["linkedin_url"] for it in abroad])
+                    for it in abroad:
+                        if it["linkedin_url"] not in there:
+                            it["verdict"] = "diaspora_missing"
+                elif abroad:
+                    skipped.append({"market": m, "reason": "diaspora check needs --via cli", "unchecked": len(abroad)})
                 counts = {}
                 for it in items:
                     counts[it["verdict"]] = counts.get(it["verdict"], 0) + 1
                 missing_urls += [it["linkedin_url"] for it in items if it["verdict"] == "missing"]
                 st = ("broken" if counts.get("broken_mapping") else "needs_repost" if counts.get("missing")
+                      else "diaspora_gaps" if counts.get("diaspora_missing")
                       else "eval_errors" if counts.get("eval_error") else "pending" if counts.get("pending") else "ok")
                 statuses.append(st)
                 out.append({"market": m, "table": cfg["table_name"], "status": st, "checked": len(items),
@@ -291,9 +327,19 @@ def main(argv=None):
                     continue
                 counts, samples = backend.health(cfg["table_id"], args.since)
                 st = health_status(counts)
+                diaspora_missing = []
+                if args.via == "cli" and cfg.get("diaspora_table_id"):
+                    abroad = backend.founders_abroad(cfg["table_id"], args.since,
+                                                     {c.lower() for c in cfg.get("home_countries", [])})
+                    there = backend.present_in(cfg["diaspora_table_id"], [r["li"] for r in abroad])
+                    diaspora_missing = [r for r in abroad if r["li"] not in there]
+                    counts["diaspora_expected"] = len(abroad)
+                    counts["diaspora_missing"] = len(diaspora_missing)
+                    if diaspora_missing and st in ("ok", "pending", "eval_errors"):
+                        st = "diaspora_gaps"
                 statuses.append(st)
                 out.append({"market": m, "table": cfg["table_name"], "status": st, "counts": counts,
-                            "nameless_samples": samples})
+                            "nameless_samples": samples, "diaspora_missing": diaspora_missing[:30]})
     except ClayError as e:
         print(json.dumps({"status": "clay_unreachable", "error": str(e)}))
         return 5

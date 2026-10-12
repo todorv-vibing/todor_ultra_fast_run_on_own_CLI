@@ -1,11 +1,69 @@
 {
-  "_note": "Market code -> Clay table the market's webhook feeds (workspace 864752). Webhook URLs are deliberately NOT stored here (public repo); the routine passes them with --webhook. query_sync = table is enabled for Clay's synced query API (workspace limit is 5).",
+  "_note": "Market code -> Clay table the market's webhook feeds (workspace 864752). Webhook URLs are deliberately NOT stored here (public repo); the routine passes them with --webhook. query_sync = table is enabled for Clay's synced query API (workspace limit is 5). home_countries mirror each table's diaspora route condition (Country not in home -> routed to the diaspora table).",
   "markets": {
-    "RO": {"table_id": "t_0tfr8vzYFZWtszrzme8", "table_name": "TUF goes to Romania", "query_sync": true},
-    "GR": {"table_id": "t_0tizfk86A3EztD7VDg9", "table_name": "TUF goes to Greece", "query_sync": true},
-    "BG": {"table_id": "t_0tize593qmBigTYsZ2S", "table_name": "TUF is in Bulgaria", "query_sync": true},
-    "HR": {"table_id": "t_0thuq8ibXD2AwJ4otfn", "table_name": "TUF goes to Croatia", "query_sync": true},
-    "HU": {"table_id": "t_0ti4420CN4AmvJgbhm3", "table_name": "TUF goes to Hungary", "query_sync": true},
-    "WB": {"table_id": "t_0tigpxuortD47UyACyi", "table_name": "TUF goes to Small Western Balkans (Albania, Montenegro, Kosovo, Macedonia)", "query_sync": false}
+    "RO": {
+      "table_id": "t_0tfr8vzYFZWtszrzme8",
+      "table_name": "TUF goes to Romania",
+      "query_sync": true,
+      "home_countries": [
+        "romania"
+      ],
+      "diaspora_table_id": "t_0tkq8bg7CXGUGkQYMxN",
+      "diaspora_table_name": "Romanian Diaspora"
+    },
+    "GR": {
+      "table_id": "t_0tizfk86A3EztD7VDg9",
+      "table_name": "TUF goes to Greece",
+      "query_sync": true,
+      "home_countries": [
+        "greece"
+      ],
+      "diaspora_table_id": "t_0tkq7zcKGJWUborxAqi",
+      "diaspora_table_name": "Greek Diaspora"
+    },
+    "BG": {
+      "table_id": "t_0tize593qmBigTYsZ2S",
+      "table_name": "TUF is in Bulgaria",
+      "query_sync": true,
+      "home_countries": [
+        "bulgaria"
+      ],
+      "diaspora_table_id": "t_0tkffxixqbirXRcWJwE",
+      "diaspora_table_name": "Bulgarian Diaspora"
+    },
+    "HR": {
+      "table_id": "t_0thuq8ibXD2AwJ4otfn",
+      "table_name": "TUF goes to Croatia",
+      "query_sync": true,
+      "home_countries": [
+        "croatia"
+      ],
+      "diaspora_table_id": "t_0tkfg4lJ9mqFBsedVBr",
+      "diaspora_table_name": "Croatian + Slovenian Diaspora"
+    },
+    "HU": {
+      "table_id": "t_0ti4420CN4AmvJgbhm3",
+      "table_name": "TUF goes to Hungary",
+      "query_sync": true,
+      "home_countries": [
+        "hungary"
+      ],
+      "diaspora_table_id": "t_0tkfe6rDKRW3Hzg7gri",
+      "diaspora_table_name": "Hungary Diaspora"
+    },
+    "WB": {
+      "table_id": "t_0tigpxuortD47UyACyi",
+      "table_name": "TUF goes to Small Western Balkans (Albania, Montenegro, Kosovo, Macedonia)",
+      "query_sync": false,
+      "home_countries": [
+        "albania",
+        "montenegro",
+        "kosovo",
+        "macedonia",
+        "north macedonia"
+      ],
+      "diaspora_table_id": "t_0tkq8z4YuPnARZuMB7N",
+      "diaspora_table_name": "Small Western Balkans Diaspora"
+    }
   }
 }
