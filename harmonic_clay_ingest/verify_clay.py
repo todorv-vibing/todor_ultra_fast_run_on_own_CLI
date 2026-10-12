@@ -117,8 +117,8 @@ class ApiBackend:
         self.key = key
 
     def _query(self, table_id, flt, cursor=None):
+        # System fields such as "Created At" are rejected by the synced query API ("Invalid field ID").
         select = [{"field": v, "as": k} for k, v in list(VALUE_COLS.items()) + list(STATUS_COLS.items())]
-        select.append({"field": "Created At", "as": "added"})
         body = {"query": {"tables": [{"id": table_id}], "select": select, "filter": flt, "field_mode": "names"},
                 "limit": 100}
         if cursor:
@@ -136,7 +136,7 @@ class ApiBackend:
     @staticmethod
     def _flatten(row):
         out = {}
-        for k in list(VALUE_COLS) + list(STATUS_COLS) + ["added"]:
+        for k in list(VALUE_COLS) + list(STATUS_COLS):
             cell = row.get(k) or {}
             st = cell.get("status")
             if k in STATUS_COLS:
@@ -162,7 +162,9 @@ class ApiBackend:
         return rows
 
     def health(self, table_id, since):
-        rows = self._all(table_id, {"field": "Created At", "op": ">=", "value": since})
+        raise ClayError("health mode is not available via the API: the synced query API cannot filter on "
+                        "Created At. Use --via cli for health checks.")
+        rows = []
         founders = [r for r in rows if str(r.get("is_founder") or "").lower() == "yes"]
         counts = {
             "total": len(rows), "no_name": sum(1 for r in rows if not r["name"]),
@@ -173,7 +175,7 @@ class ApiBackend:
             "fa_done": sum(1 for r in founders if r["founder_ai"] == "done"),
             "fa_pending": sum(1 for r in founders if r["founder_ai"] == "pending"), "fa_skipped": 0,
         }
-        samples = [{"li": r["li"], "company": r["company"], "added": r["added"]} for r in rows if not r["name"]][:10]
+        samples = [{"li": r["li"], "company": r["company"]} for r in rows if not r["name"]][:10]
         return counts, samples
 
 
