@@ -27,6 +27,7 @@ import os
 import shlex
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -230,8 +231,12 @@ def main(argv=None):
     ap.add_argument("--market", action="append", default=[])
     ap.add_argument("--clay-bin", default=os.environ.get("CLAY_BIN", "clay"))
     ap.add_argument("--write-missing")
+    ap.add_argument("--wait-seconds", type=int, default=0,
+                    help="sleep before checking, so Clay can finish enriching (keep under the shell timeout)")
     args = ap.parse_args(argv)
 
+    if args.wait_seconds > 0:
+        time.sleep(args.wait_seconds)
     markets = load_markets()
     if args.via == "api":
         key = os.environ.get("CLAY_PUBLIC_API_KEY")
