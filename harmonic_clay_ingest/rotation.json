@@ -1,0 +1,265 @@
+{
+  "_note": "Which Harmonic saved searches the daily routine runs on which UTC weekday, and which market (markets.json key) each feeds. `ingest.py today` prints today's list. Every search must run at least once a week (the routine looks back 8 days). To add a search: add it under searches with its market and to at least one day. A market missing from markets.json (e.g. no Clay table yet) is listed by `today` as skipped, not posted.",
+  "not_rotated": {
+    "_note": "Harmonic saved searches deliberately left out, with the reason.",
+    "166706": "Greek Founders - CEE: superseded by 197896",
+    "172560": "Greek Founders - Diaspora: superseded by 197897",
+    "166687": "Serbia Founders (older duplicate of 166704)",
+    "166726": "Czech Republic: no Clay market",
+    "166732": "Czech Republic: no Clay market",
+    "174338": "Czech Republic: no Clay market",
+    "174336": "Poland: no Clay market",
+    "166709": "Estonia: no Clay market",
+    "172559": "Estonia: no Clay market",
+    "174339": "Estonia: no Clay market",
+    "166710": "Lithuania: no Clay market",
+    "172558": "Lithuania: no Clay market",
+    "174333": "Lithuania: no Clay market",
+    "166711": "Latvia: no Clay market",
+    "172557": "Latvia: no Clay market",
+    "174340": "Latvia: no Clay market",
+    "166708": "Ukraine: no Clay market",
+    "166721": "Ukraine: no Clay market",
+    "169566": "Czech/Slovak/Polish-speaking founders in Bay Area: no Clay market"
+  },
+  "searches": {
+    "163502": {
+      "market": "BG",
+      "name": "Bulgarian Diaspora Founders 2025<"
+    },
+    "166652": {
+      "market": "BG",
+      "name": "Bulgarian Founders"
+    },
+    "170031": {
+      "market": "BG",
+      "name": "Bulgaria Founders - Diaspora"
+    },
+    "174318": {
+      "market": "BG",
+      "name": "Bulgarian Educated Diaspora"
+    },
+    "279559": {
+      "market": "BG",
+      "name": "Bulgarian Founders CEE (new)"
+    },
+    "174345": {
+      "market": "GR",
+      "name": "Greece Educated Diaspora"
+    },
+    "197896": {
+      "market": "GR",
+      "name": "Greece Founders - CEE"
+    },
+    "197897": {
+      "market": "GR",
+      "name": "Greece Founders - Diaspora"
+    },
+    "166714": {
+      "market": "HR",
+      "name": "Bosnia & Herzegovina Founders - CEE"
+    },
+    "166716": {
+      "market": "HR",
+      "name": "Croatia Founders - CEE"
+    },
+    "172552": {
+      "market": "HR",
+      "name": "Croatia Founders - Diaspora"
+    },
+    "172554": {
+      "market": "HR",
+      "name": "Bosnia & Herzegovina Founders - Diaspora"
+    },
+    "174316": {
+      "market": "HR",
+      "name": "Croatian Educated Diaspora"
+    },
+    "166720": {
+      "market": "HU",
+      "name": "Hungary Founders - CEE"
+    },
+    "166724": {
+      "market": "HU",
+      "name": "Hungary Founders - Diaspora"
+    },
+    "174332": {
+      "market": "HU",
+      "name": "Hungarian Educated Diaspora"
+    },
+    "166707": {
+      "market": "RO",
+      "name": "Romania Founders - CEE"
+    },
+    "166715": {
+      "market": "RO",
+      "name": "Moldova Founders - CEE"
+    },
+    "172553": {
+      "market": "RO",
+      "name": "Romania & Moldova Founders - Diaspora"
+    },
+    "174331": {
+      "market": "RO",
+      "name": "Romania & Moldova Founders Educated Diaspora"
+    },
+    "166704": {
+      "market": "RS",
+      "name": "Serbian Founders - CEE"
+    },
+    "166876": {
+      "market": "RS",
+      "name": "Serbian Founders - Diaspora"
+    },
+    "174317": {
+      "market": "RS",
+      "name": "Serbian Educated Diaspora"
+    },
+    "166717": {
+      "market": "SI",
+      "name": "Slovenia Founders - Diaspora"
+    },
+    "174196": {
+      "market": "SI",
+      "name": "Slovenia Founders - CEE"
+    },
+    "174344": {
+      "market": "SI",
+      "name": "Slovenia Educated Diaspora"
+    },
+    "166712": {
+      "market": "WB",
+      "name": "Macedonia Founders - CEE"
+    },
+    "166713": {
+      "market": "WB",
+      "name": "Albania Founders - CEE"
+    },
+    "172555": {
+      "market": "WB",
+      "name": "Albania Founders - Diaspora"
+    },
+    "172556": {
+      "market": "WB",
+      "name": "Macedonia Founders - Diaspora"
+    },
+    "174341": {
+      "market": "WB",
+      "name": "Montenegro Educated Diaspora"
+    },
+    "174342": {
+      "market": "WB",
+      "name": "North Macedonia Educated Diaspora"
+    },
+    "174347": {
+      "market": "WB",
+      "name": "Albania Educated Diaspora"
+    },
+    "174348": {
+      "market": "WB",
+      "name": "Kosovo Educated Diaspora"
+    },
+    "194780": {
+      "market": "WB",
+      "name": "Kosovo Founders - CEE"
+    },
+    "194781": {
+      "market": "WB",
+      "name": "Montenegro Founders - CEE"
+    },
+    "194782": {
+      "market": "WB",
+      "name": "North Macedonia Founders - CEE"
+    },
+    "263140": {
+      "market": "WB",
+      "name": "WB Founders - Diaspora, Names ending on -ic"
+    }
+  },
+  "days": {
+    "MONDAY": [
+      "166707",
+      "172553",
+      "170031",
+      "174345",
+      "166720",
+      "172552",
+      "174348",
+      "174196",
+      "166714",
+      "172556"
+    ],
+    "TUESDAY": [
+      "163502",
+      "166652",
+      "166724",
+      "166716",
+      "174331",
+      "174347",
+      "194780",
+      "166717",
+      "172554",
+      "174332"
+    ],
+    "WEDNESDAY": [
+      "172553",
+      "170031",
+      "174345",
+      "166720",
+      "172552",
+      "166707",
+      "174341",
+      "174317",
+      "166876",
+      "166704"
+    ],
+    "THURSDAY": [
+      "174318",
+      "174316",
+      "197896",
+      "197897",
+      "172555",
+      "166713",
+      "194782",
+      "279559",
+      "166715",
+      "263140",
+      "174344"
+    ],
+    "FRIDAY": [
+      "172553",
+      "170031",
+      "174345",
+      "166720",
+      "172552",
+      "166724",
+      "194781",
+      "166712",
+      "279559"
+    ],
+    "SATURDAY": [
+      "174342",
+      "172553",
+      "170031",
+      "174345",
+      "174317",
+      "166876",
+      "166704",
+      "174196",
+      "166717",
+      "174344",
+      "166714",
+      "172554"
+    ],
+    "SUNDAY": [
+      "174342",
+      "172553",
+      "174318",
+      "174316",
+      "174345",
+      "166720",
+      "197896",
+      "263140"
+    ]
+  }
+}

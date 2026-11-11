@@ -35,10 +35,12 @@
     },
     "HR": {
       "table_id": "t_0thuq8ibXD2AwJ4otfn",
-      "table_name": "TUF goes to Croatia",
+      "table_name": "TUF goes to Croatia (incl. Bosnia & Herzegovina)",
       "query_sync": true,
       "home_countries": [
-        "croatia"
+        "croatia",
+        "bosnia and herzegovina",
+        "bosnia"
       ],
       "diaspora_table_id": "t_0tkfg4lJ9mqFBsedVBr",
       "diaspora_table_name": "Croatian + Slovenian Diaspora"
