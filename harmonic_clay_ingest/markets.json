@@ -76,6 +76,16 @@
       ],
       "diaspora_table_id": "t_0tkq8s0H7Qbx26RosQa",
       "diaspora_table_name": "Serbian Diaspora"
+    },
+    "SI": {
+      "table_id": "t_0thwgp2Hhh8j63y4PCw",
+      "table_name": "TUF goes to Slovenia",
+      "query_sync": false,
+      "home_countries": [
+        "slovenia"
+      ],
+      "diaspora_table_id": "t_0tkfg4lJ9mqFBsedVBr",
+      "diaspora_table_name": "Croatian + Slovenian Diaspora"
     }
   }
 }
