@@ -9,6 +9,11 @@ That is exactly what happened between 2026-09-14 and 2026-10-12.
 Subcommands (stdlib only, Python 3.8+):
   self-test                       parser + payload-contract + rotation checks
   today [--day D]                 print today's saved searches (rotation.json) with their market
+  preflight --webhooks FILE       before any Harmonic call: fails if any market lacks a scheduled search
+                                  or a webhook; `post` refuses to run without today's preflight stamp
+                                  and refuses a webhook that is not the one registered for the market
+  coverage FILE...                list_saved_searches output vs rotation.json: Harmonic searches that are
+                                  neither rotated nor deliberately excluded
   urns FILE...                    print person URNs from net-new output (for get_people batches of 50)
   build --market M FILE...        parse + validate + print the records that would be posted
   post  --market M --webhook URL FILE...
@@ -318,7 +323,120 @@ def check_rotation(rot, markets):
             problems.append("search %s (%s) is on no weekday - it would never run" % (sid, cfg.get("name")))
         if sid in rot.get("not_rotated", {}):
             problems.append("search %s is both rotated and in not_rotated" % sid)
+        if markets and cfg.get("market") not in markets:
+            problems.append("search %s feeds market %r, which has no Clay table in markets.json"
+                            % (sid, cfg.get("market")))
+    fed = {cfg.get("market") for sid, cfg in searches.items() if sid in scheduled}
+    for m in sorted(markets or {}):
+        if m not in fed:
+            problems.append("market %s (%s) has no scheduled search - its Clay table would get nothing"
+                            % (m, markets[m].get("table_name")))
     return problems
+
+
+WEBHOOK_PREFIX = "https://api.clay.com/v3/sources/webhook/"
+DEFAULT_PREFLIGHT = "/tmp/hc/preflight.json"
+
+
+def _sha(text):
+    import hashlib
+    return hashlib.sha256(text.strip().encode("utf-8")).hexdigest()
+
+
+def check_webhooks(webhooks, markets):
+    """Every market must have its own, well-formed webhook. Returns a list of problems."""
+    problems = []
+    seen = {}
+    for m in sorted(markets):
+        url = (webhooks.get(m) or "").strip()
+        if not url:
+            problems.append("NO WEBHOOK for market %s (%s, table %s)"
+                            % (m, markets[m].get("table_name"), markets[m].get("table_id")))
+            continue
+        if not url.startswith(WEBHOOK_PREFIX):
+            problems.append("webhook for %s does not look like a Clay webhook URL" % m)
+        if url in seen:
+            problems.append("markets %s and %s share the same webhook (copy-paste error?)" % (seen[url], m))
+        seen[url] = m
+    for m in sorted(set(webhooks) - set(markets)):
+        problems.append("webhook given for %r, which is not a market in markets.json" % m)
+    return problems
+
+
+def cmd_preflight(args):
+    """Run before any Harmonic call. Fails loudly if any market would be silently skipped."""
+    rot, markets = load_rotation(), load_markets()
+    with open(args.webhooks, encoding="utf-8") as fh:
+        webhooks = json.load(fh)
+    problems = check_rotation(rot, markets) + check_webhooks(webhooks, markets)
+    day = (args.day or _dt.datetime.now(_dt.timezone.utc).strftime("%A")).upper()
+    plan = [{"id": sid, "urn": "urn:harmonic:saved_search:%s" % sid, "market": rot["searches"][sid]["market"],
+             "name": rot["searches"][sid].get("name")} for sid in rot["days"].get(day, [])]
+    out = {"status": "failed" if problems else "ok", "day": day, "problems": problems, "run": plan,
+           "markets": sorted(markets)}
+    if not problems:
+        stamp = {"date": _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d"), "day": day,
+                 "webhook_sha256": {m: _sha(webhooks[m]) for m in markets}}
+        os.makedirs(os.path.dirname(os.path.abspath(args.stamp)), exist_ok=True)
+        with open(args.stamp, "w", encoding="utf-8") as fh:
+            json.dump(stamp, fh, indent=1)
+    print(json.dumps(out, indent=2, ensure_ascii=False))
+    print("PREFLIGHT %s" % ("OK" if not problems else "FAILED: " + "; ".join(problems)), file=sys.stderr)
+    return 0 if not problems else 3
+
+
+def check_preflight_stamp(path, market, webhook):
+    """post refuses unless today's preflight passed and this webhook is the one registered for this market."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            stamp = json.load(fh)
+    except (OSError, ValueError):
+        return ("no preflight stamp at %s. ROUTINE PROMPT OUTDATED or preflight skipped: run "
+                "`ingest.py preflight --webhooks <file>` first; if your instructions have no preflight step, "
+                "push-notify Todor 'Harmonic->Clay routine prompt is outdated'" % path)
+    today = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+    if stamp.get("date") != today:
+        return "preflight stamp is from %s, not today (%s): run preflight again" % (stamp.get("date"), today)
+    want = stamp.get("webhook_sha256", {}).get(market)
+    if want != _sha(webhook):
+        return "the --webhook given is not the webhook registered for market %s in preflight (wrong table?)" % market
+    return None
+
+
+def parse_saved_search_listing(text):
+    """(id, name, entity_type) from list_saved_searches output saved verbatim."""
+    out = []
+    for block in re.split(r"\n\s*- urn: ", "\n" + text)[1:]:
+        m = re.match(r'"?urn:harmonic:saved_search:(\d+)"?', block)
+        if not m:
+            continue
+        name = re.search(r"\n\s*name: (.*)", block)
+        et = re.search(r"\n\s*entity_type: (\w+)", block)
+        out.append((m.group(1), name.group(1).strip().strip('"').strip() if name else None,
+                    et.group(1) if et else None))
+    return out
+
+
+def cmd_coverage(args):
+    """Compare Harmonic's saved searches with rotation.json: every PERSON search must be rotated or excluded."""
+    rot = load_rotation()
+    known = set(rot["searches"]) | {k for k in rot.get("not_rotated", {}) if not k.startswith("_")}
+    listed = {}
+    for path in args.files:
+        with open(path, encoding="utf-8") as fh:
+            for sid, name, et in parse_saved_search_listing(fh.read()):
+                listed[sid] = (name, et)
+    if not listed:
+        print("no saved searches parsed from %s (not saved verbatim?)" % ", ".join(args.files), file=sys.stderr)
+        return 3
+    unaccounted = [{"id": sid, "name": n} for sid, (n, et) in sorted(listed.items())
+                   if et in (None, "PERSON") and sid not in known]
+    gone = [{"id": sid, "name": rot["searches"][sid].get("name")} for sid in sorted(rot["searches"])
+            if sid not in listed]
+    out = {"status": "ok" if not (unaccounted or gone) else "attention", "listed": len(listed),
+           "unaccounted": unaccounted, "rotated_but_not_in_harmonic": gone}
+    print(json.dumps(out, indent=2, ensure_ascii=False))
+    return 0
 
 
 def cmd_today(args):
@@ -402,6 +520,9 @@ def cmd_build_or_post(args, post):
         "missing_country": sum(1 for r in records if not r["country"]),
         "refused": refusal, "dry_run": not post, "posted": [],
     }
+    if post and not refusal and not args.no_preflight:
+        refusal = check_preflight_stamp(args.preflight, args.market, args.webhook)
+        report["refused"] = refusal
     if refusal:
         print("REFUSED (nothing posted): %s" % refusal, file=sys.stderr)
     elif post:
@@ -467,6 +588,22 @@ found: 3
 '''
 
 
+FIXTURE_SEARCH_LIST = '''items[2]:
+  - urn: "urn:harmonic:saved_search:279559"
+    name: Bulgarian Founders CEE (new)
+    entity_type: PERSON
+    query:
+      filterGroup:
+        joinOperator: and
+    console_url: "https://console.harmonic.ai/dashboard/people/urn:harmonic:saved_search:279559"
+  - urn: "urn:harmonic:saved_search:263140"
+    name: "WB Founders - Diaspora, -ic"
+    entity_type: PERSON
+    console_url: "https://console.harmonic.ai/dashboard/people/urn:harmonic:saved_search:263140"
+total_count: 2
+next_cursor: null'''
+
+
 def cmd_self_test(_args):
     fails = []
 
@@ -517,6 +654,16 @@ def cmd_self_test(_args):
         fails.append("rotation.json unreadable: %s" % e)
     bad_rot = {"searches": {"1": {"market": "RO"}, "2": {"market": "SI"}}, "days": {d: ["1"] for d in DAYS}}
     expect(any("never run" in x for x in check_rotation(bad_rot, {})), "unscheduled search detected")
+    mk = {"RO": {"table_name": "ro"}, "SI": {"table_name": "si"}, "BG": {"table_name": "bg"}}
+    expect(any("BG" in x and "no scheduled search" in x for x in check_rotation(bad_rot, mk)),
+           "market without a scheduled search detected")
+    hooks = {"RO": WEBHOOK_PREFIX + "a", "SI": WEBHOOK_PREFIX + "a"}
+    wp = check_webhooks(hooks, mk)
+    expect(any("NO WEBHOOK for market BG" in x for x in wp), "missing webhook detected")
+    expect(any("share the same webhook" in x for x in wp), "shared webhook detected")
+    listing = parse_saved_search_listing(FIXTURE_SEARCH_LIST)
+    expect([x[0] for x in listing] == ["279559", "263140"] and listing[1][1] == "WB Founders - Diaspora, -ic"
+           and listing[0][2] == "PERSON", "saved-search listing parse: %r" % listing)
     if fails:
         print("SELF-TEST FAILED (%d):" % len(fails))
         for f in fails:
@@ -536,6 +683,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("self-test")
+    pf = sub.add_parser("preflight")
+    pf.add_argument("--webhooks", required=True, help='JSON file {"RO": "https://api.clay.com/...", ...} (keep it in /tmp)')
+    pf.add_argument("--day", help="weekday name; default: today in UTC")
+    pf.add_argument("--stamp", default=DEFAULT_PREFLIGHT)
+    pc = sub.add_parser("coverage")
+    pc.add_argument("files", nargs="+", help="list_saved_searches outputs saved verbatim (all pages)")
     pt = sub.add_parser("today")
     pt.add_argument("--day", help="weekday name; default: today in UTC")
     pu = sub.add_parser("urns")
@@ -553,10 +706,17 @@ def main(argv=None):
         p.add_argument("--delay", type=float, default=0.25)
         if name == "post":
             p.add_argument("--webhook", required=True)
+            p.add_argument("--preflight", default=DEFAULT_PREFLIGHT, help="stamp written by `preflight`")
+            p.add_argument("--no-preflight", action="store_true",
+                           help="manual/laptop use only: post without today's preflight stamp")
         p.add_argument("files", nargs="+")
     args = ap.parse_args(argv)
     if args.cmd == "self-test":
         return cmd_self_test(args)
+    if args.cmd == "preflight":
+        return cmd_preflight(args)
+    if args.cmd == "coverage":
+        return cmd_coverage(args)
     if args.cmd == "today":
         return cmd_today(args)
     if args.cmd == "urns":

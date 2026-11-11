@@ -24,11 +24,24 @@ market it feeds, and the weekdays it runs. `python3 ingest.py today` prints toda
 if a declared search is on no weekday. Add a new search here, not in the routine prompt.
 Searches deliberately left out are listed under `not_rotated` with the reason.
 
+## Guards against a silently skipped market
+
+A market whose searches never run, or that has no webhook, fails loudly instead of quietly
+getting nothing (this cost Slovenia and Bosnia a month of leads in 2026):
+
+- `self-test` fails if any market in `markets.json` has no scheduled search, or a search is on no weekday.
+- `preflight --webhooks FILE` (the routine writes FILE in /tmp from its prompt) fails if any market
+  has no webhook, two markets share one, or the rotation is broken. It writes a stamp for today.
+- `post` refuses without today's stamp (so an outdated routine prompt is blocked, not silent) and
+  refuses a webhook that is not the one registered for that market. Manual runs: `--no-preflight`.
+- `coverage` compares Harmonic's saved searches (`list_saved_searches`, saved verbatim) with
+  `rotation.json`: any search that is neither rotated nor listed under `not_rotated` is reported.
+
 ## Typical run
 
 ```bash
 python3 ingest.py self-test
-python3 ingest.py today                                  # today's searches + markets
+python3 ingest.py preflight --webhooks /tmp/hc/webhooks.json  # every market has searches + a webhook
 python3 ingest.py urns /tmp/hc/172553_p1.txt            # URN batches for get_people(location)
 python3 ingest.py post --market RO --search-urn urn:harmonic:saved_search:172553 \
   --webhook "$RO_WEBHOOK" --locations /tmp/hc/loc_1.txt --report /tmp/hc/report_172553.json \
