@@ -16,10 +16,19 @@ Clay's tables read `full_name` (→ Full Name, from which First/Last Name are de
 columns blank and the row is never evaluated. That happened 2026-09-14 → 2026-10-12 when the routine
 lost this script and improvised its own. **Never post with an ad-hoc script.**
 
+## Which searches run when
+
+`rotation.json` is the single source of truth for the daily routine: each saved search, the
+market it feeds, and the weekdays it runs. `python3 ingest.py today` prints today's list
+(markets without a Clay table in `markets.json` come back under `skipped`). `self-test` fails
+if a declared search is on no weekday. Add a new search here, not in the routine prompt.
+Searches deliberately left out are listed under `not_rotated` with the reason.
+
 ## Typical run
 
 ```bash
 python3 ingest.py self-test
+python3 ingest.py today                                  # today's searches + markets
 python3 ingest.py urns /tmp/hc/172553_p1.txt            # URN batches for get_people(location)
 python3 ingest.py post --market RO --search-urn urn:harmonic:saved_search:172553 \
   --webhook "$RO_WEBHOOK" --locations /tmp/hc/loc_1.txt --report /tmp/hc/report_172553.json \

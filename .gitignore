@@ -2,6 +2,9 @@
 config.json
 *.json
 !.gitignore
+# Ingest config is public by design (no secrets; webhooks live in the routine prompt)
+!harmonic_clay_ingest/markets.json
+!harmonic_clay_ingest/rotation.json
 
 # Cache files
 *_cache.json
