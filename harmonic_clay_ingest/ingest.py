@@ -7,7 +7,8 @@ specific payload keys (see CLAY_CONTRACT) and silently leave columns blank for a
 That is exactly what happened between 2026-09-14 and 2026-10-12.
 
 Subcommands (stdlib only, Python 3.8+):
-  self-test                       parser + payload-contract checks against bundled fixtures
+  self-test                       parser + payload-contract + rotation checks
+  today [--day D]                 print today's saved searches (rotation.json) with their market
   urns FILE...                    print person URNs from net-new output (for get_people batches of 50)
   build --market M FILE...        parse + validate + print the records that would be posted
   post  --market M --webhook URL FILE...
@@ -290,6 +291,57 @@ def load_markets():
         return json.load(fh)["markets"]
 
 
+DAYS = ("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+
+
+def load_rotation():
+    with open(os.path.join(HERE, "rotation.json"), encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def check_rotation(rot, markets):
+    """Problems that would make a search silently never run or never post."""
+    problems = []
+    searches, days = rot.get("searches", {}), rot.get("days", {})
+    if sorted(days) != sorted(DAYS):
+        problems.append("rotation.json days must be exactly %s" % ", ".join(DAYS))
+    scheduled = set()
+    for day, ids in days.items():
+        for sid in ids:
+            scheduled.add(sid)
+            if sid not in searches:
+                problems.append("%s: search %s is not declared under searches" % (day, sid))
+        if len(ids) != len(set(ids)):
+            problems.append("%s lists a search twice" % day)
+    for sid, cfg in searches.items():
+        if sid not in scheduled:
+            problems.append("search %s (%s) is on no weekday - it would never run" % (sid, cfg.get("name")))
+        if sid in rot.get("not_rotated", {}):
+            problems.append("search %s is both rotated and in not_rotated" % sid)
+    return problems
+
+
+def cmd_today(args):
+    rot, markets = load_rotation(), load_markets()
+    day = (args.day or _dt.datetime.now(_dt.timezone.utc).strftime("%A")).upper()
+    if day not in DAYS:
+        print("unknown day %r" % day, file=sys.stderr)
+        return 2
+    problems = check_rotation(rot, markets)
+    run, skipped = [], []
+    for sid in rot["days"][day]:
+        cfg = rot["searches"][sid]
+        item = {"id": sid, "urn": "urn:harmonic:saved_search:%s" % sid, "market": cfg["market"], "name": cfg.get("name")}
+        if cfg["market"] in markets:
+            run.append(item)
+        else:
+            item["reason"] = "market %s has no Clay table in markets.json" % cfg["market"]
+            skipped.append(item)
+    print(json.dumps({"day": day, "run": run, "skipped": skipped, "rotation_problems": problems},
+                     indent=2, ensure_ascii=False))
+    return 0
+
+
 def gather(args):
     people = []
     for path in args.files:
@@ -458,6 +510,13 @@ def cmd_self_test(_args):
         load_markets()
     except Exception as e:  # noqa: BLE001
         fails.append("markets.json unreadable: %s" % e)
+    try:
+        for prob in check_rotation(load_rotation(), load_markets()):
+            fails.append("rotation.json: %s" % prob)
+    except Exception as e:  # noqa: BLE001
+        fails.append("rotation.json unreadable: %s" % e)
+    bad_rot = {"searches": {"1": {"market": "RO"}, "2": {"market": "SI"}}, "days": {d: ["1"] for d in DAYS}}
+    expect(any("never run" in x for x in check_rotation(bad_rot, {})), "unscheduled search detected")
     if fails:
         print("SELF-TEST FAILED (%d):" % len(fails))
         for f in fails:
@@ -477,6 +536,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("self-test")
+    pt = sub.add_parser("today")
+    pt.add_argument("--day", help="weekday name; default: today in UTC")
     pu = sub.add_parser("urns")
     pu.add_argument("files", nargs="+")
     for name in ("build", "post"):
@@ -496,6 +557,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.cmd == "self-test":
         return cmd_self_test(args)
+    if args.cmd == "today":
+        return cmd_today(args)
     if args.cmd == "urns":
         return cmd_urns(args)
     return cmd_build_or_post(args, post=(args.cmd == "post"))
